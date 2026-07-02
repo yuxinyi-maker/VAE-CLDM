@@ -1,0 +1,210 @@
+VAE-CLDM User Manual
+====================
+
+1. Purpose
+----------
+
+VAE-CLDM is a two-stage conditional latent diffusion framework for condition-guided reconstruction of 3D porous geomaterials. It is designed for binary voxelized digital rock samples and uses three pore-scale conditions:
+
+1. porosity;
+2. mean pore diameter;
+3. pore-size standard deviation.
+
+The framework contains two main stages:
+
+1. VAE pre-training for latent-space compression;
+2. CLDM training and reconstruction in the fixed VAE latent space.
+
+This manual describes the required inputs, expected outputs, main scripts, and typical workflows.
+
+
+2. Input data
+-------------
+
+2.1 Voxel data format
+
+Input samples should be stored as NumPy arrays: .npy
+
+Each file should contain a 3D binary volume with shape: (64, 64, 64)
+
+The binary phases should be consistent across the dataset. For example, one value may represent pore space and the other may represent solid matrix. Do not mix phase conventions between samples.
+
+2.2 Filename format for pore-size conditions
+
+The dataset loader expects mean pore diameter and pore-size standard deviation to be encoded in the filename: <pore_size_mean>_<pore_size_std>.npy
+
+In the current workflow:
+
+- porosity is computed directly from the voxel array;
+- mean pore diameter is parsed from the first value in the filename;
+- pore-size standard deviation is parsed from the second value in the filename.
+
+
+3. Main scripts
+---------------
+
+3.1 train_vae.py
+
+Purpose:
+
+    Pre-trains the 3D VAE used for latent-space compression.
+
+Main behavior:
+
+    - loads binary 3D voxel samples;
+    - trains the VAE encoder and decoder;
+    - saves VAE checkpoints;
+    - logs training and validation information.
+
+Expected input:
+
+    - directory containing .npy files of shape (64, 64, 64).
+
+Expected output:
+
+    - trained VAE checkpoint files;
+    - TensorBoard logs;
+    - validation diagnostics.
+
+
+Typical command:
+
+    python train_vae.py
+
+
+3.2 main_vaedpm.py
+
+Purpose:
+
+    Trains the conditional latent diffusion model in the fixed VAE latent space.
+
+Main behavior:
+
+    - loads the pre-trained VAE checkpoint;
+    - freezes the VAE parameters;
+    - encodes 3D voxel samples into latent variables;
+    - trains the CLDM using pore-scale conditions;
+    - saves CLDM checkpoints.
+
+Expected input:
+
+    - pre-trained VAE checkpoint;
+    - directory containing .npy training samples;
+    - pore-size labels encoded in filenames.
+
+Expected output:
+
+    - trained CLDM checkpoint files;
+    - TensorBoard logs;
+    - training and validation loss records.
+
+
+Typical command:
+
+    python main_vaedpm.py
+
+Expected behavior:
+
+    The script initializes the VAE, freezes it, initializes the CLDM, and starts latent diffusion training. If paths are incorrect, the script will raise a file or directory error.
+
+
+3.3 generate.py
+
+Purpose:
+
+    Generates or reconstructs 3D porous structures under specified pore-scale conditions using trained VAE-CLDM checkpoints.
+
+Main behavior:
+
+    - loads the trained CLDM checkpoint;
+    - loads the corresponding VAE checkpoint;
+    - receives target conditions;
+    - performs latent-space denoising;
+    - decodes latent results back to voxel space;
+    - saves generated structures.
+
+Expected input:
+
+    - trained CLDM checkpoint;
+    - pre-trained VAE checkpoint;
+    - target porosity;
+    - target mean pore diameter;
+    - target pore-size standard deviation;
+    - output directory.
+
+Expected output:
+
+    - reconstructed 3D voxel structures;
+
+
+Typical command:
+
+    python generate.py 
+
+
+4. Typical use case
+-------------------
+
+The typical workflow is:
+
+    1. Prepare binary 64^3 .npy voxel samples.
+    2. Encode pore-size descriptors in filenames.
+    3. Train the VAE using train_vae.py.
+    4. Train the CLDM using main_vaedpm.py.
+    5. Generate condition-guided structures using generate.py.
+    6. Evaluate morphology, connectivity, permeability, diversity, and efficiency.
+
+
+5. Computational requirements
+-----------------------------
+
+Recommended hardware:
+
+    - CUDA-enabled NVIDIA GPU;
+    - at least 16 GB GPU memory for 64^3 training;
+    - 24 GB or 32 GB GPU memory preferred;
+    - at least 32 GB system RAM.
+
+Hardware used in the manuscript:
+
+    - Intel Xeon Gold 6133 CPU, 10 cores;
+    - NVIDIA Tesla V100 GPU, 32 GB VRAM;
+    - 50 GB system RAM.
+
+CPU-only execution is not recommended for training.
+
+
+6. Dependencies
+---------------
+
+Required:
+
+    - Python 3.8 or later
+    - PyTorch
+    - PyTorch Lightning
+    - NumPy
+    - SciPy
+    - scikit-image
+    - scikit-learn
+    - Matplotlib
+    - Pandas
+    - tqdm
+    - einops
+    - TensorBoard
+
+Optional:
+
+    - PyVista
+    - PoreSpy
+
+Install example:
+
+    pip install numpy scipy scikit-image scikit-learn matplotlib pandas tqdm einops pytorch-lightning tensorboard
+
+Install PyTorch separately according to your CUDA version.
+
+
+7. Contact
+-----------
+
+For questions, please contact: Xinyi Yu, 18407870306
